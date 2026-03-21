@@ -1,25 +1,46 @@
 import { appConfig } from "./config.js";
-import { insertDestinationRecords } from "./destination.js";
-import { fetchSourceRecords } from "./source.js";
-import { mapToDestination } from "./transform.js";
+import { syncKuberaBalances } from "./kubera.js";
+import { fetchGopeerTotalAccountValue } from "./platforms/gopeer.js";
+import { fetchMicaBalance } from "./platforms/mica.js";
 
 async function run(): Promise<void> {
   console.log(`[${new Date().toISOString()}] Starting daily sync job`);
 
-  const sourceRecords = await fetchSourceRecords(
-    appConfig.SOURCE_API_URL,
-    appConfig.REQUEST_TIMEOUT_MS
-  );
-  console.log(`Fetched ${sourceRecords.length} records from source`);
+  const mica = await fetchMicaBalance({
+    loginUrl: appConfig.MICA_LOGIN_URL,
+    username: appConfig.MICA_USERNAME,
+    password: appConfig.MICA_PASSWORD,
+    timeoutMs: appConfig.PLAYWRIGHT_TIMEOUT_MS,
+    headless: appConfig.BROWSER_HEADLESS
+  });
 
-  const destinationRecords = mapToDestination(sourceRecords);
-  await insertDestinationRecords(
-    appConfig.DEST_API_URL,
-    appConfig.DEST_API_KEY,
-    destinationRecords,
-    appConfig.REQUEST_TIMEOUT_MS
+  console.log(`MICA login succeeded. Final URL: ${mica.finalUrl}`);
+  console.log(`CELI = ${mica.celi.toFixed(2)}`);
+  console.log(`REER = ${mica.reer.toFixed(2)}`);
+
+  const gopeer = await fetchGopeerTotalAccountValue({
+    loginUrl: appConfig.GOPEER_LOGIN_URL,
+    username: appConfig.GOPEER_USERNAME,
+    password: appConfig.GOPEER_PASSWORD,
+    timeoutMs: appConfig.PLAYWRIGHT_TIMEOUT_MS,
+    headless: appConfig.BROWSER_HEADLESS
+  });
+  console.log(`Gopeer login succeeded. Final URL: ${gopeer.finalUrl}`);
+  console.log(`GOPEER = ${gopeer.totalAccountValue.toFixed(2)}`);
+
+  await syncKuberaBalances(
+    {
+      apiKey: appConfig.KUBERA_API_KEY,
+      secret: appConfig.KUBERA_SECRET,
+      portfolioId: appConfig.KUBERA_PORTFOLIO_ID
+    },
+    {
+      CELI: mica.celi,
+      REER: mica.reer,
+      Gopeer: gopeer.totalAccountValue
+    }
   );
-  console.log(`Inserted ${destinationRecords.length} records to destination`);
+  console.log("Kubera assets updated: CELI, REER, Gopeer");
 }
 
 run().catch((error: unknown) => {

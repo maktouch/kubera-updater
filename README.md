@@ -1,14 +1,15 @@
 # Kubera Updater Worker
 
 Daily TypeScript worker that:
-1. Fetches records from a source API
-2. Transforms them
-3. Inserts them into a destination API
+1. Logs into platforms with no API (starting with MICA)
+2. Reads balances from the UI
+3. Updates values in Kubera
 
 ## Setup
 
 ```bash
 pnpm install
+pnpm exec playwright install chromium
 cp .env.example .env
 ```
 
@@ -19,6 +20,14 @@ Fill `.env` with real endpoints and credentials.
 ```bash
 pnpm run run:once
 ```
+
+Current behavior:
+- Logs into MICA with `MICA_USERNAME` and `MICA_PASSWORD`
+- Automatically extracts `CELI` and `REER` from the MICA account summary table
+- Logs into Gopeer with `GOPEER_USERNAME` and `GOPEER_PASSWORD`
+- Extracts Gopeer `Total Account Value`
+- Updates Kubera assets named `CELI`, `REER`, and `Gopeer` through Data API v3
+- Uses `KUBERA_PORTFOLIO_ID` if provided, otherwise defaults to the first portfolio returned by Kubera
 
 ## Development
 
@@ -36,9 +45,10 @@ Example cron entry (runs every day at 03:00):
 0 3 * * * cd /path/to/monterrey && pnpm run run:once >> worker.log 2>&1
 ```
 
-## Notes
+## Debugging
 
-- `src/source.ts` handles source fetching
-- `src/transform.ts` maps source records to destination payload
-- `src/destination.ts` handles destination insertion
-- `src/worker.ts` wires everything together
+You can run headed mode for troubleshooting:
+
+```dotenv
+BROWSER_HEADLESS=false
+```
