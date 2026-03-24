@@ -11,10 +11,19 @@ const EnvBoolean = z.preprocess((value) => {
   return !["0", "false", "no"].includes(value.toLowerCase());
 }, z.boolean());
 
+const OptionalEnvString = z.preprocess((value) => {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmedValue = value.trim();
+  return trimmedValue === "" ? undefined : trimmedValue;
+}, z.string().min(1).optional());
+
 const EnvSchema = z.object({
   KUBERA_API_KEY: z.string().min(1),
   KUBERA_SECRET: z.string().min(1),
-  KUBERA_PORTFOLIO_ID: z.string().min(1).optional(),
+  KUBERA_PORTFOLIO_ID: OptionalEnvString,
   MICA_USERNAME: z.string().min(1),
   MICA_PASSWORD: z.string().min(1),
   GOPEER_USERNAME: z.string().min(1),
