@@ -1,0 +1,49 @@
+name: Daily Kubera Update
+
+on:
+  schedule:
+    # GitHub Actions cron uses UTC.
+    # 22:00 UTC = 6:00 PM in America/Montreal during daylight saving time (UTC-4).
+    - cron: "0 22 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: kubera-updater-daily
+  cancel-in-progress: false
+
+jobs:
+  run-updater:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: "9"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run updater
+        run: pnpm run run:once
+        env:
+          KUBERA_API_KEY: ${{ secrets.KUBERA_API_KEY }}
+          KUBERA_SECRET: ${{ secrets.KUBERA_SECRET }}
+          KUBERA_PORTFOLIO_ID: ${{ secrets.KUBERA_PORTFOLIO_ID }}
+          MICA_USERNAME: ${{ secrets.MICA_USERNAME }}
+          MICA_PASSWORD: ${{ secrets.MICA_PASSWORD }}
+          GOPEER_USERNAME: ${{ secrets.GOPEER_USERNAME }}
+          GOPEER_PASSWORD: ${{ secrets.GOPEER_PASSWORD }}
