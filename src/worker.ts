@@ -35,12 +35,12 @@ async function run(): Promise<void> {
       portfolioId: appConfig.KUBERA_PORTFOLIO_ID
     },
     {
-      CELI: mica.celi,
-      REER: mica.reer,
+      "MICA - TFSA": mica.celi,
+      "MICA - RRSP": mica.reer,
       Gopeer: gopeer.totalAccountValue
     }
   );
-  console.log("Kubera assets updated: CELI, REER, Gopeer");
+  console.log("Kubera assets updated: MICA - TFSA, MICA - RRSP, Gopeer");
 }
 
 run().catch((error: unknown) => {
