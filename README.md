@@ -26,7 +26,7 @@ Current behavior:
 - Automatically extracts `CELI` and `REER` from the MICA account summary table
 - Logs into Gopeer with `GOPEER_USERNAME` and `GOPEER_PASSWORD`
 - Extracts Gopeer `Total Account Value`
-- Updates Kubera assets named `CELI`, `REER`, and `Gopeer` through Data API v3
+- Updates Kubera assets named `MICA - TFSA`, `MICA - RRSP`, and `Gopeer` through Data API v3
 - Uses `KUBERA_PORTFOLIO_ID` if provided, otherwise defaults to the first portfolio returned by Kubera
 
 ## Development
