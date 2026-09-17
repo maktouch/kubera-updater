@@ -68,17 +68,22 @@ export async function fetchGopeerTotalAccountValue(
 }
 
 async function extractTotalAccountValue(page: Page, timeoutMs: number): Promise<number> {
-  const totalRow = page.locator("div.row.font-size-sm", { hasText: "Total Account Value" }).first();
-  await totalRow.waitFor({ state: "visible", timeout: timeoutMs });
-  const totalRowText = (await totalRow.textContent())?.replace(/\s+/g, " ").trim() ?? "";
-  const rowCurrencyMatches = totalRowText.match(/\$\s*[\d,]+\.\d{2}/g) ?? [];
+  await page
+    .getByText("Total Account Value")
+    .first()
+    .waitFor({ state: "visible", timeout: timeoutMs });
 
-  if (rowCurrencyMatches.length > 0) {
-    return parseCurrencyValue(rowCurrencyMatches[rowCurrencyMatches.length - 1]);
+  const totalRow = page.locator("tr", { hasText: "Total Account Value" }).first();
+  if ((await totalRow.count()) > 0) {
+    const totalRowText = (await totalRow.textContent())?.replace(/\s+/g, " ").trim() ?? "";
+    const rowCurrencyMatches = totalRowText.match(/\$\s*[\d,]+\.\d{2}/g) ?? [];
+    if (rowCurrencyMatches.length > 0) {
+      return parseCurrencyValue(rowCurrencyMatches[rowCurrencyMatches.length - 1]);
+    }
   }
 
   const pageText = await page.locator("body").innerText();
-  const fallbackMatch = pageText.match(/Total Account Value[^\n]*\$\s*([\d,]+\.\d{2})/i);
+  const fallbackMatch = pageText.match(/Total Account Value[\s\S]{0,80}?\$\s*([\d,]+\.\d{2})/i);
   if (fallbackMatch?.[1]) {
     return parseCurrencyValue(fallbackMatch[1]);
   }
