@@ -33,9 +33,15 @@ type UpdateItemResponse = {
   errorCode: number;
 };
 
+export type KuberaAssetUpdate = {
+  value: number;
+  /** Cost basis. Omitted when unknown so Kubera keeps its current value. */
+  cost?: number;
+};
+
 export async function syncKuberaBalances(
   config: KuberaConfig,
-  assetValues: Record<string, number>
+  assetValues: Record<string, KuberaAssetUpdate>
 ): Promise<void> {
   const portfolioId = config.portfolioId ?? (await getDefaultPortfolioId(config));
   const portfolioData = await kuberaRequest<PortfolioDataResponse>(
@@ -44,7 +50,7 @@ export async function syncKuberaBalances(
     `/api/v3/data/portfolio/${portfolioId}`
   );
 
-  for (const [assetName, value] of Object.entries(assetValues)) {
+  for (const [assetName, update] of Object.entries(assetValues)) {
     const targetAsset = findAssetByName(portfolioData.data.asset, assetName);
     if (!targetAsset) {
       const available = portfolioData.data.asset.slice(0, 100).map((asset) => asset.name).join(", ");
@@ -53,9 +59,12 @@ export async function syncKuberaBalances(
       );
     }
 
-    await kuberaRequest<UpdateItemResponse>(config, "POST", `/api/v3/data/item/${targetAsset.id}`, {
-      value
-    });
+    const body: Record<string, unknown> = { value: update.value };
+    if (update.cost !== undefined) {
+      body.cost = update.cost;
+    }
+
+    await kuberaRequest<UpdateItemResponse>(config, "POST", `/api/v3/data/item/${targetAsset.id}`, body);
   }
 }
 

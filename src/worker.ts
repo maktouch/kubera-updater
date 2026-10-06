@@ -17,6 +17,11 @@ async function run(): Promise<void> {
   console.log(`MICA login succeeded. Final URL: ${mica.finalUrl}`);
   console.log(`CELI = ${mica.celi.toFixed(2)}`);
   console.log(`REER = ${mica.reer.toFixed(2)}`);
+  console.log(`CELI cost basis = ${formatCost(mica.celiCost)}`);
+  console.log(`REER cost basis = ${formatCost(mica.reerCost)}`);
+  for (const warning of mica.warnings) {
+    console.warn(`MICA warning: ${warning}`);
+  }
 
   const gopeer = await fetchGopeerTotalAccountValue({
     loginUrl: appConfig.GOPEER_LOGIN_URL,
@@ -27,6 +32,10 @@ async function run(): Promise<void> {
   });
   console.log(`Gopeer login succeeded. Final URL: ${gopeer.finalUrl}`);
   console.log(`GOPEER = ${gopeer.totalAccountValue.toFixed(2)}`);
+  console.log(`GOPEER cost basis = ${formatCost(gopeer.netDeposits)}`);
+  for (const warning of gopeer.warnings) {
+    console.warn(`Gopeer warning: ${warning}`);
+  }
 
   await syncKuberaBalances(
     {
@@ -35,12 +44,16 @@ async function run(): Promise<void> {
       portfolioId: appConfig.KUBERA_PORTFOLIO_ID
     },
     {
-      "MICA - TFSA": mica.celi,
-      "MICA - RRSP": mica.reer,
-      Gopeer: gopeer.totalAccountValue
+      "MICA - TFSA": { value: mica.celi, cost: mica.celiCost ?? undefined },
+      "MICA - RRSP": { value: mica.reer, cost: mica.reerCost ?? undefined },
+      Gopeer: { value: gopeer.totalAccountValue, cost: gopeer.netDeposits ?? undefined }
     }
   );
   console.log("Kubera assets updated: MICA - TFSA, MICA - RRSP, Gopeer");
+}
+
+function formatCost(cost: number | null): string {
+  return cost === null ? "unknown (not updated)" : cost.toFixed(2);
 }
 
 run().catch((error: unknown) => {

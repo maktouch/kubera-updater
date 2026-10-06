@@ -33,6 +33,9 @@ export type GopeerLoginConfig = {
 export type GopeerBalanceResult = {
   finalUrl: string;
   totalAccountValue: number;
+  /** Net deposits (deposits minus withdrawals), derived as Total Account Value minus Net Income. Null if Net Income could not be read. */
+  netDeposits: number | null;
+  warnings: string[];
 };
 
 export async function fetchGopeerTotalAccountValue(
@@ -57,9 +60,13 @@ export async function fetchGopeerTotalAccountValue(
     });
 
     const totalAccountValue = await extractTotalAccountValue(page, config.timeoutMs);
+    const warnings: string[] = [];
+    const netDeposits = await extractNetDeposits(page, totalAccountValue, warnings);
     return {
       finalUrl: page.url(),
-      totalAccountValue
+      totalAccountValue,
+      netDeposits,
+      warnings
     };
   } finally {
     await context.close();
@@ -89,6 +96,33 @@ async function extractTotalAccountValue(page: Page, timeoutMs: number): Promise<
   }
 
   throw new Error("Could not extract Gopeer Total Account Value from dashboard.");
+}
+
+/**
+ * Gopeer defines Simple Return as the change in account value relative to net
+ * deposits (deposits minus withdrawals), and shows Net Income on the dashboard.
+ * Net deposits therefore equal Total Account Value minus Net Income.
+ */
+async function extractNetDeposits(
+  page: Page,
+  totalAccountValue: number,
+  warnings: string[]
+): Promise<number | null> {
+  const pageText = await page.locator("body").innerText();
+  const netIncomeMatch = pageText.match(/Net Income[\s\S]{0,80}?(-?)\$\s*([\d,]+\.\d{2})/i);
+  if (!netIncomeMatch) {
+    warnings.push("Could not read Net Income from Gopeer dashboard; cost basis skipped.");
+    return null;
+  }
+
+  const netIncome = (netIncomeMatch[1] === "-" ? -1 : 1) * parseCurrencyValue(netIncomeMatch[2]);
+  const netDeposits = Math.round((totalAccountValue - netIncome) * 100) / 100;
+  if (netDeposits <= 0) {
+    warnings.push(`Derived Gopeer net deposits ${netDeposits.toFixed(2)} is not positive; cost basis skipped.`);
+    return null;
+  }
+
+  return netDeposits;
 }
 
 async function fillFirstVisible(
