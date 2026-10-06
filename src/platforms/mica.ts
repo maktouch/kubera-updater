@@ -1,5 +1,6 @@
 import { chromium, type Page } from "playwright";
 import { parseCurrencyValue } from "../utils/currency.js";
+import { extractMicaCostBasis } from "./mica-cost-basis.js";
 
 const USERNAME_SELECTORS = [
   "input#okta-signin-username",
@@ -39,6 +40,10 @@ export type MicaBalanceResult = {
   finalUrl: string;
   celi: number;
   reer: number;
+  /** Net deposits to date, derived from the transaction history. Null when it could not be verified. */
+  celiCost: number | null;
+  reerCost: number | null;
+  warnings: string[];
 };
 
 export async function fetchMicaBalance(config: MicaLoginConfig): Promise<MicaBalanceResult> {
@@ -79,10 +84,15 @@ export async function fetchMicaBalance(config: MicaLoginConfig): Promise<MicaBal
       );
     }
 
+    const costBasis = await extractMicaCostBasis(page, config.timeoutMs);
+
     return {
       finalUrl,
       celi: balances.celi,
-      reer: balances.reer
+      reer: balances.reer,
+      celiCost: costBasis.celi,
+      reerCost: costBasis.reer,
+      warnings: costBasis.warnings
     };
   } finally {
     await context.close();
